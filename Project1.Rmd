@@ -15,7 +15,21 @@ library(flexdashboard)
 ### Chart A
 
 ```{r}
-
+library(writexl)
+library(readxl)
+file_path <- "C:/Users/Administrator/Downloads/2024_indexofeconomicfreedom_data.xlsx"
+data1 <- read_excel(file_path)
+file_path <- "C:/Users/Administrator/Downloads/internet-users-by-country-2024.csv"
+data2 <- read.csv(file_path)
+colnames(data2)[colnames(data2) == "country"] <- "Country"
+merged_data <- merge(data1, data2, by = "Country")
+merged_data[merged_data == "N/A"] <- NA
+cleaned_data <- na.omit(merged_data)
+x1 <- cleaned_data$`Financial Freedom`
+x2 <- cleaned_data$`Tax Burden`
+y <- cleaned_data$InternetTrafficPercofResidentsWithInternetAccess
+multiple_regression <- lm(y ~ x1 + x2, data = cleaned_data)
+summary(multiple_regression)
 ```
 
 ## Column {data-width="350"}
