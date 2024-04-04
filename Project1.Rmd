@@ -8,6 +8,9 @@ output:
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
+# Heads up when we switch trade code we need to set our path directories so do it up here 
+# so it's easier to see and so we don't have to keep chanigng our file path in the code below
+setwd("/Users/alexvidal/Desktop/Spring2024Classes/CMDA_4654/CMDA_Project_1/")
 ```
 
 ## Column {data-width="650"}
@@ -16,19 +19,38 @@ library(flexdashboard)
 
 ```{r}
 library(writexl)
+library(dplyr)
 library(readxl)
-file_path <- "C:/Users/Administrator/Downloads/2024_indexofeconomicfreedom_data.xlsx"
+# Your present diretory from setwd() should have these data in it
+file_path <- "cleaned_data.xlsx"
 data1 <- read_excel(file_path)
-file_path <- "C:/Users/Administrator/Downloads/internet-users-by-country-2024.csv"
+file_path <- "internet-users-by-country-2024.csv"
 data2 <- read.csv(file_path)
 colnames(data2)[colnames(data2) == "country"] <- "Country"
 merged_data <- merge(data1, data2, by = "Country")
-merged_data[merged_data == "N/A"] <- NA
+
+# I don't think this is needed, if you look there is no N/A merged data
+#merged_data[merged_data == "N/A"] <- NA
+
+# Same for cleaned_data it is the exact same as merged data same 162x22 frame
 cleaned_data <- na.omit(merged_data)
-x1 <- cleaned_data$`Financial Freedom`
-x2 <- cleaned_data$`Tax Burden`
-y <- cleaned_data$InternetTrafficPercofResidentsWithInternetAccess
-multiple_regression <- lm(y ~ x1 + x2, data = cleaned_data)
+
+# Cleaning the un-needed Year column and extra 2 columns at the end 
+# that were added for some reason after merging
+cleaned_data["InternetTrafficPercofResidentsWithInternetAccess.y"] <- NULL
+cleaned_data["InternetTraffic12.31.2020.y"] <- NULL
+cleaned_data["InternetUsersNumberOfInternetUsers.y"] <- NULL
+# Removing Year since it will be the same for all of the countries
+cleaned_data["Year"] <- NULL
+
+# Changing name for some of the longer column names
+names(cleaned_data)[names(cleaned_data) == "InternetTrafficPercofResidentsWithInternetAccess.x"] <- "PercentPeopleConnected"
+names(cleaned_data)[names(cleaned_data) == "InternetTraffic12.31.2020.x"] <- "InternetTraffic"
+names(cleaned_data)[names(cleaned_data) == "InternetUsersNumberOfInternetUsers.x"] <- "InternetUsersAmount"
+
+# Change data types in economic cloumns from char io doubles
+cleaned_data <- cleaned_data %>% mutate_at(c(3:15), as.numeric)
+multiple_regression <- lm(PercentPeopleConnected ~  `Financial Freedom` + `Government Spending`, data = cleaned_data)
 summary(multiple_regression)
 ```
 
@@ -36,12 +58,27 @@ summary(multiple_regression)
 
 ### Chart B
 
+Multiple Linear Regression 
 ```{r}
-
+multiple_regression <- lm(PercentPeopleConnected ~  `Financial Freedom` + `Government Spending`, data = cleaned_data)
+summary(multiple_regression)
 ```
 
 ### Chart C
 
+Ridge Regression
 ```{r}
+library(glmnet)
+
+
 
 ```
+
+
+
+
+
+
+
+
+
