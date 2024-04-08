@@ -2,83 +2,216 @@
 title: "Project 1"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
+    orientation: rows
     vertical_layout: fill
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
+library(ggplot2)
+library(writexl)
+library(dplyr)
+library(class)
+library(stringr)
+library(readxl)
+library(rworldmap)
 # Heads up when we switch trade code we need to set our path directories so do it up here 
 # so it's easier to see and so we don't have to keep chanigng our file path in the code below
 setwd("/Users/alexvidal/Desktop/Spring2024Classes/CMDA_4654/CMDA_Project_1/")
 ```
 
-## Column {data-width="650"}
 
-### Chart A
-
-```{r}
-library(writexl)
-library(dplyr)
-library(readxl)
-# Your present diretory from setwd() should have these data in it
+```{r, include=FALSE}
 file_path <- "cleaned_data.xlsx"
-data1 <- read_excel(file_path)
-file_path <- "internet-users-by-country-2024.csv"
-data2 <- read.csv(file_path)
-colnames(data2)[colnames(data2) == "country"] <- "Country"
-merged_data <- merge(data1, data2, by = "Country")
-
-# I don't think this is needed, if you look there is no N/A merged data
-#merged_data[merged_data == "N/A"] <- NA
-
-# Same for cleaned_data it is the exact same as merged data same 162x22 frame
-cleaned_data <- na.omit(merged_data)
-
-# Cleaning the un-needed Year column and extra 2 columns at the end 
-# that were added for some reason after merging
+cleaned_data <- read_excel(file_path)
 cleaned_data["InternetTrafficPercofResidentsWithInternetAccess.y"] <- NULL
 cleaned_data["InternetTraffic12.31.2020.y"] <- NULL
 cleaned_data["InternetUsersNumberOfInternetUsers.y"] <- NULL
-# Removing Year since it will be the same for all of the countries
 cleaned_data["Year"] <- NULL
 
+
 # Changing name for some of the longer column names
-names(cleaned_data)[names(cleaned_data) == "InternetTrafficPercofResidentsWithInternetAccess.x"] <- "PercentPeopleConnected"
-names(cleaned_data)[names(cleaned_data) == "InternetTraffic12.31.2020.x"] <- "InternetTraffic"
-names(cleaned_data)[names(cleaned_data) == "InternetUsersNumberOfInternetUsers.x"] <- "InternetUsersAmount"
+names(cleaned_data)[names(cleaned_data) == "InternetTrafficPercofResidentsWithInternetAccess"]<-"Percent People Connected"
+names(cleaned_data)[names(cleaned_data) == "InternetTraffic12.31.2020"] <- "Internet Traffic"
+names(cleaned_data)[names(cleaned_data) == "InternetUsersNumberOfInternetUsers"] <- "Internet Users Amount"
 
-# Change data types in economic cloumns from char io doubles
+data1 <- cleaned_data
+names(cleaned_data) <- str_replace_all(names(cleaned_data), c(" " = "_"))
+
+# Change data types in economic columns from char io doubles
 cleaned_data <- cleaned_data %>% mutate_at(c(3:15), as.numeric)
-multiple_regression <- lm(PercentPeopleConnected ~  `Financial Freedom` + `Government Spending`, data = cleaned_data)
-summary(multiple_regression)
+worldMap <- joinCountryData2Map(cleaned_data, joinCode="NAME", nameJoinColumn="Country")
 ```
 
-## Column {data-width="350"}
+Data Overview {data-orientation=rows}
+==================
 
-### Chart B
-
-Multiple Linear Regression 
+### Our Data
 ```{r}
-multiple_regression <- lm(PercentPeopleConnected ~  `Financial Freedom` + `Government Spending`, data = cleaned_data)
-summary(multiple_regression)
+knitr::kable(head(data1))
 ```
 
-### Chart C
 
-Ridge Regression
+
+Rows
+----------------
+
+
+### Data Introduction
+
+Our data comprises of two data sets. One data set is from the Index of Economic freedom, (https://www.heritage.org/index/pages/all-country-scores) site that scores the economic freedom of different countries based on particular metrics such as property rights, tax burden, labor freedom ,etc and will calculate an overall score to show how 'free' a countries economic opportunities and such are. The scores are from 0-100 where 100 means the country is the most 'free' in that area of analysis while 0 means no freedom for that particular category. The next data set that we have is the internet usage by country data set found here (https://worldpopulationreview.com/country-rankings/internet-users-by-country). It consists of 3 main variables the total internet users per country, internet traffic in Terabytes and the percentage of internet users in the country. We have combined both of these data sets into one larger data set to do our analysis which we will talk about in the abstract section. 
+
+Here is a link to our two data sets https://drive.google.com/drive/folders/12HrlXJR_UdA65qzBq8JsycShSF3KdxXM?usp=sharing
+
+
+
+
+
+### Data Dictionary 
+
+Country - The country name
+
+Region - The region the country is in
+
+Overall_Score - The overall Economic Index Score
+
+Property_Rights - The score for the property Rights a country has
+
+Government_Integrity - Score based on how non-corrupt government is
+
+Judicial_Effectiveness - Score for how just judicial system is
+
+Tax_Burden - Score that measures income and corporate tax as a percentage of GDP      
+
+Government_Spending - Score that measures government spending
+
+Fiscal_Health - Score of debt burden on country
+
+Business_Freedom - Scores the environment for business to succeed
+
+Labor_Freedom - Scores the various aspects of the legal and regulatory framework of a country’s labor market
+
+Monetary_Freedom - Scores inflation with an assessment of various government activities that distort prices
+
+Trade_Freedom - Score that measures  the extent of tariff and nontariff barriers that affect imports and exports of goods and services
+
+Investment_Freedom - Score that measures how constrained investing is
+
+Financial_Freedom - Score that measures banking efficiency and a measure of independence from government control and interference in the financial sector
+
+Internet_Users_Amount - The amount of internet users in a country, phone, laptop etc.
+
+Internet_Traffic - The amount of Terabytes of internet traffic a country has
+
+Percent_People_Connected - The percent of people in the country connected to internet. Can alse be more than 100% because of large heavy tourism for that country artificially increasing users. 
+
+Abstract
+=====================
+
+### Abstract 
+
+We have a few goals we intend to reach in analyzing this data set. First one being we are interested to find any relationship between particular Economic Freedom parameters that could help predict not only the percentage of internet users for a country as well as what that relationship looks like. We also intend on finding a way to classify a countries region based on particular Economic Freedom Indexes and their respective internet user percentage and see what relationships or differences different regions of the world would have with those parameters. We will use a multitude of classification algorithms from kNN to Naive Bayes and use two multivariate regression models and see the pros and cons of each respective model in our results tab. 
+
+Below we have two plots showing Percentage of Internet users and Ecnonomic Freedom Score and we can already see some patterns between these two variables. We will of course need ot do more analysis to fully flesh out the relationships the two data parameters may have.
+
+
+
+Rows
+--------------------
+
+
+```{r, plot1, fig.width=15, fig.height=6}
+par(mfrow=c(1,2))
+mapCountryData(worldMap, nameColumnToPlot ="Percent_People_Connected", mapTitle="Percent of People Connected to Internet")
+mapCountryData(worldMap, nameColumnToPlot ="Overall_Score", mapTitle="Overall Economic Freedom Score")
+```
+
+
+Multivariate Regression {data-orientation=columns}
+=====================
+
+### Description
+Describing the multivariate parameters and what they represent
+
+
+### Results
 ```{r}
+multiple_regression <- lm(Percent_People_Connected ~  Financial_Freedom + Government_Spending, data = cleaned_data)
+
+#summary(multiple_regression)
+```
+
+The resutls or our model and also a plot to go along with it perhaps.
+
+Ridge Regression {data-orientation=columns}
+=====================
+
+### Description
+Describing the multivariate parameters and what they represent
+
+
+### Results
+
+```{r}
+# I am not entirely sure how to do Ridge regression given looking at his slides.
+# I will look over the slides but for now this is literally copied from 
+# https://www.statology.org/ridge-regression-in-r/ 
 library(glmnet)
+y <- cleaned_data$Percent_People_Connected
+x <- data.matrix(cleaned_data[, c('Financial_Freedom', 'Government_Spending')])
+model <- cv.glmnet(x=x, y=y, alpha = 0)
+summary(model)
+plot(model)
+model2 <- glmnet(x=x, y=y, alpha = 0, lambda= model$lambda.min) 
+coef(model2)
+```
+
+LOESS Fit {data-orientation=columns}
+=====================
+### Description
+Describing the multivariate parameters and what they represent
 
 
+### Results
+```{r}
+plot(cleaned_data$Property_Rights, cleaned_data$Government_Integrity)
+```
+
+
+KNN Classification {data-orientation=columns}
+=====================
+### Description
+Description
+
+
+### Results
+
+```{r}
+```
+
+Naive Bayes Classification {data-orientation=columns}
+=====================
+### Description
+Describing the multivariate parameters and what they represent
+
+
+### Results
+
+```{r}
+sort(cleaned_data$Region)
 
 ```
 
 
+Logistic Regression Classification {data-orientation=columns}
+=====================
+
+### Description
+Describing the multivariate parameters and what they represent
 
 
+### Results
+```{r}
+head(cleaned_data)
 
-
-
-
-
+```
