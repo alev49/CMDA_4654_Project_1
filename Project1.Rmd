@@ -164,6 +164,45 @@ summary(model)
 plot(model)
 model2 <- glmnet(x=x, y=y, alpha = 0, lambda= model$lambda.min) 
 coef(model2)
+
+
+# Set up the predictors matrix, the chose predictors variables are Financial Freedom, Government Spending and Government Intergrity
+predictors <- c("Financial Freedom", "Government Spending", "Government Integrity")
+X <- as.matrix(cleaned_data[, predictors]) 
+
+#set the variable we want to analyze the Percent People Connected
+y <- cleaned_data$PercentPeopleConnected
+
+# Cross validation and plot
+ridge_model <- glmnet(x = X, y = y, alpha = 0)
+cv_ridge <- cv.glmnet(x = X, y = y, alpha = 0)
+plot(cv_ridge)
+
+# Fit ridge regression model with min lambda
+best_lambda <- cv_ridge$lambda.min
+best_lambda #print out the best lambda
+ridge <- glmnet(x = X, y = y, alpha = 0, lambda = best_lambda)
+
+#produce Ridge trace plot
+plot(ridge_model, xvar = "lambda")
+
+# Make prediction based on the ridge regression model
+prediction <- predict(ridge_model, s = best_lambda, newx = X)
+
+# Plot the prediction
+plot(y, prediction, xlab = "Actual Percent", ylab = "Predicted Percent", main = "Actual Percent vs. Predicted Percent")
+
+#find SST and SSE
+sst <- sum((y - mean(y))^2)
+sse <- sum((prediction - y)^2)
+
+#find R-Squared
+rsq <- 1 - sse/sst
+rsq
+correlation <- cor(y, prediction)
+rsquared <- correlation^2
+rsquared
+
 ```
 
 LOESS Fit {data-orientation=columns}
