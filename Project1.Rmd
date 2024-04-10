@@ -15,6 +15,11 @@ library(class)
 library(stringr)
 library(readxl)
 library(rworldmap)
+library(glmnet)
+library(MASS)
+library(caret)
+library(plyr)
+library(e1071)
 # Heads up when we switch trade code we need to set our path directories so do it up here 
 # so it's easier to see and so we don't have to keep chanigng our file path in the code below
 setwd("/Users/alexvidal/Desktop/Spring2024Classes/CMDA_4654/CMDA_Project_1/")
@@ -130,108 +135,179 @@ mapCountryData(worldMap, nameColumnToPlot ="Overall_Score", mapTitle="Overall Ec
 Multivariate Regression {data-orientation=columns}
 =====================
 
-### Description
-Describing the multivariate parameters and what they represent
+
+```{r, include=FALSE}
+parameters <- c("", "Government_Spending", "Business_Freedom", "Monetary_Freedom", "Investment_Freedom", "")
+fullModel <- lm(cbind(Percent_People_Connected, Overall_Score) ~Government_Spending+Business_Freedom+Monetary_Freedom+Investment_Freedom, data = cleaned_data)
+
+values <- fullModel$coefficients
+newdata <- data.frame(Tax_Burden =50, Government_Spending=50, Business_Freedom=50, Monetary_Freedom=50, Investment_Freedom=50, Financial_Freedom=50)
 
 
-### Results
-```{r}
-multiple_regression <- lm(Percent_People_Connected ~  Financial_Freedom + Government_Spending, data = cleaned_data)
-
-#summary(multiple_regression)
 ```
 
-The resutls or our model and also a plot to go along with it perhaps.
+### Parameter Values
+```{r}
+knitr::kable(fullModel$coefficients, col.names = c("Percent People Connected","Overall Score"))
+```
 
-Ridge Regression {data-orientation=columns}
+
+
+### Description
+For Multivariate regression we decided we wanted to see if we can predict the percent of people that are connected to the internet along with the country's overall economic freedom score based on the country's Government spending, business freedom score, monetary freedom score and investment freedom score. The reasoning behind this was just the interest in finding if there was any relation between all of these parameters.
+
+We also plotted the the specific relationship between our predictors and response variable. We noticed that business freedom correlated highest with percent of people connected to the internet. We also found (unsurprisingly) many of the economic freedom index scores were correlated with the overall economic score except for government spending. We are not sure why that is. 
+
+
+
+Rows {data-orientation=rows}
+---------------------
+
+```{r plot2, fig.width=3, fig.height=2}
+ggplot(data=cleaned_data, aes(y=Percent_People_Connected))+
+  geom_point(aes(x=Government_Spending), color='blue')+
+  labs(x="Score", y="% People using Internet", title = "Government Spending")
+ggplot(data=cleaned_data, aes(y=Percent_People_Connected))+
+  geom_point(aes(x=Business_Freedom), , color='green')+
+  labs(x="Score", y="% People using Internet", title = "Business Freedom")
+ggplot(data=cleaned_data, aes(y=Percent_People_Connected))+
+  geom_point(aes(x=Monetary_Freedom), color='yellow')+
+  labs(x="Score", y="% People using Internet", title = "Monetary Freedom")
+ggplot(data=cleaned_data, aes(y=Percent_People_Connected))+
+  geom_point(aes(x=Investment_Freedom), color='red')+
+  labs(x="Score", y="% People using Internet", title = "Investment Freedom")
+```
+
+Rows {data-orientation=rows}
+---------------------
+
+```{r plot3, fig.width=3, fig.height=2}
+ggplot(data=cleaned_data, aes(y=Overall_Score))+
+  geom_point(aes(x=Government_Spending), color='blue')+
+  labs(x="Score", y="Overall Score", title = "Government Spending")
+ggplot(data=cleaned_data, aes(y=Overall_Score))+
+  geom_point(aes(x=Business_Freedom), , color='green')+
+  labs(x="Score", y="Overall Score", title = "Business Freedom")
+ggplot(data=cleaned_data, aes(y=Overall_Score))+
+  geom_point(aes(x=Monetary_Freedom), color='yellow')+
+  labs(x="Score", y="Overall Score", title = "Monetary Freedom")
+ggplot(data=cleaned_data, aes(y=Overall_Score))+
+  geom_point(aes(x=Investment_Freedom), color='red')+
+  labs(x="Score", y="Overall Score", title = "Investment Freedom")
+```
+
+
+
+
+
+
+Ridge Regression {data-orientation=rows}
 =====================
 
 ### Description
-We'll use Percent People Connected as the response variable and the Financial Freedom, Government Spending, Government Intergrity as predictors. To perform ridge regression, we use glmnet function to fit the ridge regression with alpha = 0 and find the best lambda. Then we can calculate the R squared pf the model on the training data, the R squared of the model is 43.68%, the best model was able to explain only 43.68% of the variation in the response values of the training data.The goodness of fit of the model is relatively low, these three predictors are not good enough to predict the Percent People Connect of a country.
+We'll use Percent People Connected as the response variable and the Financial Freedom, Government Spending, Government Integrity as predictors. To perform ridge regression, we use glmnet function to fit the ridge regression with alpha = 0 and find the best lambda. Then we can calculate the R squared pf the model on the training data, the R squared of the model is 43.68%, the best model was able to explain only 43.68% of the variation in the response values of the training data.The goodness of fit of the model is relatively low, these three predictors are not good enough to predict the Percent People Connect of a country.
+
 
 
 ### Results
 
+
+Rows {data-orientation=columns}
+---------------------
+
 ```{r}
 # Set up the predictors matrix, the chose predictors variables are Financial Freedom, Government Spending and Government Intergrity
-predictors <- c("Financial Freedom", "Government Spending", "Government Integrity")
+predictors <- c("Financial_Freedom", "Government_Spending", "Government_Integrity")
 X <- as.matrix(cleaned_data[, predictors]) 
 
 #set the variable we want to analyze the Percent People Connected
-y <- cleaned_data$PercentPeopleConnected
+y <- cleaned_data$Percent_People_Connected
 
 # Cross validation and plot
 ridge_model <- glmnet(x = X, y = y, alpha = 0)
 cv_ridge <- cv.glmnet(x = X, y = y, alpha = 0)
 plot(cv_ridge)
+```
 
+
+```{r}
 # Fit ridge regression model with min lambda
 best_lambda <- cv_ridge$lambda.min
-best_lambda #print out the best lambda
+#best_lambda #print out the best lambda
 ridge <- glmnet(x = X, y = y, alpha = 0, lambda = best_lambda)
 
 #produce Ridge trace plot
 plot(ridge_model, xvar = "lambda")
+```
 
+
+```{r}
 # Make prediction based on the ridge regression model
 prediction <- predict(ridge_model, s = best_lambda, newx = X)
 
 # Plot the prediction
-plot(y, prediction, xlab = "Actual Percent", ylab = "Predicted Percent", main = "Actual Percent vs. Predicted Percent")
-
+plot(y,prediction, xlab = "Actual Percent", ylab = "Predicted Percent", main = "Actual Percent vs. Predicted Percent")
+model <- lm(prediction~y)
+lines(y, predict(model))
 #find SST and SSE
 sst <- sum((y - mean(y))^2)
 sse <- sum((prediction - y)^2)
 
 #find R-Squared
 rsq <- 1 - sse/sst
-rsq
+#rsq
 
 ```
 
-LOESS Fit {data-orientation=columns}
+LOESS Fit {data-orientation=rows}
 =====================
 ### Description
 We are using the LOESS to fit a curve to the relationship between variables in pair, Financial Freedom and Percent People Connected, Government Spending and Percent People Connected, Tax Burden and Percent People Connected, Property Rights and Percent People Connected. We can see that only Financial Freedom and Property Rights have a clearly positive relationship with Percent People Connected. This is consistent with the expectation that people of a country have more financial freedom and property rights have more possibility to access to the Internet.
 
 
+
+
 ### Results
-```{r}
+
+{data-orientation=rows}
+--------------------
+
+```{r plot4, fig.width=7, fig.height=4}
 # Fit LOESS curve for financial freedom vs. percent people connected
-loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Financial Freedom`, data = cleaned_data)
+loess_fit <- loess(Percent_People_Connected ~ cleaned_data$Financial_Freedom, data = cleaned_data)
 predicted <- predict(loess_fit)
 # Plot data and LOESS fit
-ggplot(cleaned_data, aes(x = `Financial Freedom`, y = PercentPeopleConnected)) +
+ggplot(cleaned_data, aes(x = Financial_Freedom, y = Percent_People_Connected)) +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE, color = "red") +
   labs(x = "Financial Freedom", y = "Percent People Connected", title = "Financial Freedom vs. Percent People Connected")
 
-
 # Fit LOESS curve for government spending vs. percent people connected
-loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Government Spending`, data = cleaned_data)
+loess_fit <- loess(Percent_People_Connected ~ cleaned_data$Government_Spending, data = cleaned_data)
 predicted <- predict(loess_fit)
 # Plot data and LOESS fit
-ggplot(cleaned_data, aes(x = `Government Spending`, y = PercentPeopleConnected)) +
+ggplot(cleaned_data, aes(x = Government_Spending, y = Percent_People_Connected)) +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE, color = "red") +
   labs(x = "Government Spending", y = "Percent People Connected", title = "Government Spending vs. Percent People Connected")
+```
 
 
+```{r plot5, fig.width=7, fig.height=4}
 # Fit LOESS curve for tax burden vs. percent people connected
-loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Tax Burden`, data = cleaned_data)
+loess_fit <- loess(Percent_People_Connected ~ cleaned_data$Tax_Burden, data = cleaned_data)
 predicted <- predict(loess_fit)
 # Plot data and LOESS fit
-ggplot(cleaned_data, aes(x = `Tax Burden`, y = PercentPeopleConnected)) +
+ggplot(cleaned_data, aes(x = Tax_Burden, y = Percent_People_Connected)) +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE, color = "red") +
   labs(x = "Tax Burden", y = "Percent People Connected", title = "Tax Burden vs. Percent People Connected")
 
-
 # Fit LOESS curve for tax burden vs. percent people connected
-loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Property Rights`, data = cleaned_data)
+loess_fit <- loess(Percent_People_Connected ~ cleaned_data$Property_Rights, data = cleaned_data)
 predicted <- predict(loess_fit)
 # Plot data and LOESS fit
-ggplot(cleaned_data, aes(x = `Property Rights`, y = PercentPeopleConnected)) +
+ggplot(cleaned_data, aes(x = Property_Rights, y = Percent_People_Connected)) +
   geom_point() +
   geom_smooth(method = "loess", se = FALSE, color = "red") +
   labs(x = "Property Rights", y = "Percent People Connected", title = "Property Rights vs. Percent People Connected")
@@ -239,72 +315,156 @@ ggplot(cleaned_data, aes(x = `Property Rights`, y = PercentPeopleConnected)) +
 ```
 
 
-KNN Classification {data-orientation=columns}
+
+
+Description {data-navmenu="KNN Classification" data-orientation=columns}
 =====================
+
+
 ### Description
-Description
+For K-Nearest Neighbors Classification we decided to try and figure out based on Overall Economic Freedom Score and percentage of internet users how you can classify what region that country belongs to. We already have our data classified based on region and some of the regions are larger than others making this knn classification more biased to those countries. We wish to see if the possible relationships that arise in trying to classify the region, like would certain regions would cluster in certain areas like say, higher Monetary Freedom Score index and high internet connection percentage. 
+
+In our testing we decided the other parameter besides percent of people connected to the internet to classify regions with would be the Monetary Freedom Score. For whatever reason this gives our highest accuracy score of 0.5510204 without adding any more variables to be classified with. One possible explanation could be that when compared with percentage of people connected to the internet, the Monetary Freedom Score has the least looking correlation as seen in our multivariate regression tab. 
+
+The plot shows the section that the training set created when it was being trained on with 70% of the whole data set as its training set. Each colored section represents the region's region for classification. So for example Sub-Saharran Africa has a large region that is mainly clustered with a low percentage of people connected to the internet but a fairly high range of monetary score while Europe region has a very small region of high percentage of people connected ot the internet in comparison.
 
 
-### Results
+### Tables
 
 ```{r}
+set.seed(1738)
+dt <- (sample(nrow(cleaned_data), nrow(cleaned_data)*.7))
+train <- cbind( cleaned_data$Percent_People_Connected[dt], cleaned_data$Monetary_Freedom[dt])
+test<- cbind( cleaned_data$Percent_People_Connected[-dt], cleaned_data$Monetary_Freedom[-dt])
+true_responses <- as.matrix(cleaned_data[dt, 2])
+test_responses <- as.factor(as.matrix(cleaned_data[-dt, 2]))
+knnModel <- knn(train = train, test = test, cl=true_responses, k=5)
+confMat <- confusionMatrix(data =knnModel, reference=test_responses) 
+confMat$table <- rbind(as.matrix(confMat$table), c(10,8,17,4,11))
+confMat$table <- cbind(confMat$table, c(5,9,17,1,17, 50))
+knitr::kable(confMat$table,col.names = c("Predicted","Americas",	"Asia-Pacific",	"Europe",	"Middle East/North Africa",	"Sub-Saharan Africa","Total"	))
+knitr::kable(confMat$byClass[, c(5,11)])
+
 ```
+
+Plot {data-navmenu="KNN Classification" data-orientation=columns}
+=====================
+
+
+### Plot
+
+```{r}
+plot.df <- data.frame(data=train, Region = true_responses, trained=rep(1,nrow(true_responses)))
+
+
+plot.df1 = data.frame(x = plot.df$data.1, 
+                      y = plot.df$data.2, 
+                      Region = plot.df$Region)
+find_hull = function(df) df[chull(df$x, df$y), ]
+boundary = ddply(plot.df1, .variables = "Region", .fun = find_hull)
+plot.df <- rbind(plot.df, data.frame(data=test, Region = test_responses, trained=rep(0,length(test_responses))))
+colnames(plot.df) <- c("Percent_People_Connected", "Monetary_Freedom", "Region", "Trained")
+ggplot() +
+  geom_polygon(data = boundary, aes(x = x, y = y, group = Region, fill = Region), alpha = 0.3) +
+  geom_point(data = plot.df, aes(x = Percent_People_Connected, y = Monetary_Freedom, pch = factor(Trained), color=factor(Region)),size=2) +
+  labs(x = "Percent People Connected", y = "Monetary Freedom", color = "Region", pch = "Type of Data\n0 for Test\n1for Train",title = "The Clusters Defining Each Region Data") 
+
+```
+
+
 
 Naive Bayes Classification {data-orientation=columns}
 =====================
+
+
 ### Description
-Describing the multivariate parameters and what they represent
+For K-Nearest Neighbors Classification we decided to try and figure out based on Overall Economic Freedom Score and percentage of internet users how you can classify what region that country belongs to. We already have our data classified based on region and some of the regions are larger than others making this knn classification more biased to those countries. We wish to see if the possible relationships that arise in trying to classify the region, like would certain regions would cluster in certain areas like say, higher Monetary Freedom Score index and high internet connection percentage. 
+
+In our testing we decided the other parameter besides percent of people connected to the internet to classify regions with would be the Monetary Freedom Score. For whatever reason this gives our highest accuracy score of 0.5510204 without adding any more variables to be classified with. One possible explanation could be that when compared with percentage of people connected to the internet, the Monetary Freedom Score has the least looking correlation as seen in our multivariate regression tab. 
+
+The plot shows the section that the training set created when it was being trained on with 70% of the whole data set as its training set. Each colored section represents the region's region for classification. So for example Sub-Saharan Africa has a large region that is mainly clustered with a low percentage of people connected to the internet but a fairly high range of monetary score while Europe region has a very small region of high percentage of people connected ot the internet in comparison.
 
 
 ### Results
 
 ```{r}
-sort(cleaned_data$Region)
+naiveBayesData <- cleaned_data
+naiveBayesData$ClassInternet[cleaned_data$Percent_People_Connected>90] <- "A"
+naiveBayesData$ClassInternet[cleaned_data$Percent_People_Connected<=90 & cleaned_data$Percent_People_Connected>77] <- "B"
+naiveBayesData$ClassInternet[cleaned_data$Percent_People_Connected<=77 & cleaned_data$Percent_People_Connected>50] <- "C"
+naiveBayesData$ClassInternet[cleaned_data$Percent_People_Connected<=50] <- "D"
+
+naiveBayesData$ClassInternet <- as.factor(naiveBayesData$ClassInternet)
+naiveBayesData$ClassMoney[cleaned_data$Monetary_Freedom<=75 & cleaned_data$Monetary_Freedom>71] <- "B"
+naiveBayesData$ClassMoney[cleaned_data$Monetary_Freedom<=71 & cleaned_data$Monetary_Freedom>67] <- "C"
+naiveBayesData$ClassMoney[cleaned_data$Monetary_Freedom<=67] <- "D"
+
+naiveBayesData$ClassMoney <- as.factor(naiveBayesData$ClassMoney)
+
+trainIndex <- sort(sample(nrow(naiveBayesData), nrow(naiveBayesData)*.7))
+trainData <- naiveBayesData[trainIndex, c("ClassInternet", "ClassMoney")]
+testData <- naiveBayesData[-trainIndex, c("ClassInternet", "ClassMoney")]
+trainLabels <- naiveBayesData[trainIndex, "Region"]
+testLabels <- naiveBayesData[-trainIndex, "Region"]
+model <- naiveBayes(Region ~ ClassInternet+ClassMoney,cbind(trainData,trainLabels))
+
+yhat <- predict(model, testData)
+library(gmodels)
+CrossTable(yhat, as.matrix(testLabels), prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE, 
+           dnn = c("predicted", "actual"))
+
+resultTable <- table(yhat, as.matrix(testLabels))
+knitr::kable(resultTable,caption = "Prediction", col.names = c("Actual", "Americas",	"Asia-Pacific",	"Europe",	"Middle East/North Africa",	"Sub-Saharan Africa"))
+misclass <- (sum(resultTable) - sum(diag(resultTable))) / sum(resultTable)
+#misclass
 
 ```
 
 
-Logistic Regression Classification {data-orientation=columns}
+Logistic Regression Classification {data-orientation=rows}
 =====================
 
 ### Description
 Since the data did not contain a data type that is required by Logistic regression, we have to create some new variables. We defined the threshold for Percent People Connected and Tax burden by using mean(), then create a two new variables to record the result. The new created variables are Connected and Heavy. Connected = 1 means the percent of people of this country is greater than the mean value, Connected = 0 means the percent of people of this country is smaller than the mean value. Heavy = Heavy(= 1) means the tax burden of this country is greater than the mean value, Heavy = Not Heavy(= 0) means the tax burden of this country is smaller than the mean value. After we set up the new variables, then we can do the Logistic regression. We used Financial Freedom and Property Rights as predictors and we found that the country have heavy tax burden have more percent people connected to the internet in general. And we also can get two prediction formula to predict, logit(̂ π) = -2.03 + 0.059 Financial Freedom − 1.37 Not Heavy, logit(̂ π) = -1.85 + 0.053 Property Rights − 1.88 Not Heavy
 
 
+{data-orientation=rows}
+------------------
+
 ### Results
-```{r}
+```{r plot6, height=7, width=5}
 library(dplyr)
 #since there is no required data type to use Logistic regression, so I need to create some new variables to satisfy it.
 #setup the threshold, if the percent people connected is over the mean value than set it as 1, otherwise set it as 0
-threshold <- mean(cleaned_data$PercentPeopleConnected)
+threshold <- mean(cleaned_data$Percent_People_Connected)
 # calculate the mean of tax burden and set it as the threshold of tax burden
-mean <- mean(cleaned_data$`Tax Burden`)
+mean <- mean(cleaned_data$Tax_Burden)
 
 
 # Create a binary response variable based on the threshold
 cleaned_data <- cleaned_data %>%
-  mutate(Connected = ifelse(PercentPeopleConnected > threshold, 1, 0))
+  mutate(Connected = ifelse(Percent_People_Connected > threshold, 1, 0))
 cleaned_data <- cleaned_data %>%
-  mutate(Heavy = ifelse(`Tax Burden` > mean, "Heavy", "Not heavy"))
+  mutate(Heavy = ifelse(Tax_Burden > mean, "Heavy", "Not heavy"))
 
 # Do the logistic regression, take Financial freedom and new created variable Heavy as predictors, target variable is new created variable Connected
-logit_model <- glm(Connected ~ `Financial Freedom`* Heavy, data = cleaned_data, family = binomial)
-summary(logit_model)
+logit_model <- glm(Connected ~ Financial_Freedom* Heavy, data = cleaned_data, family = binomial)
+
 # plot for logistic regression
-ggplot(cleaned_data, aes(x = `Financial Freedom`, y = Connected, color = Heavy)) +
+ggplot(cleaned_data, aes(x = Financial_Freedom, y = Connected, color = Heavy)) +
   geom_point(aes(color = Heavy), position = position_jitter(height = 0.03, width = 0)) +
   geom_smooth(method = "glm", method.args = list(family="binomial"), se = F) +
   labs(x = "`Financial Freedom`", y = "Connected", title = "Logistic Regression: Connected vs. Property Rights")
-confint.default(logit_model)
+#confint.default(logit_model)
+
 
 # Do the logistic regression, take Property Rights and new created variable Heavy as predictors, target variable is new created variable Connected
-logit_model <- glm(Connected ~ `Property Rights`* Heavy, data = cleaned_data, family = binomial)
-summary(logit_model)
+logit_model <- glm(Connected ~ Property_Rights* Heavy, data = cleaned_data, family = binomial)
 # plot for logistic regression
-ggplot(cleaned_data, aes(x = `Property Rights`, y = Connected, color = Heavy)) +
+ggplot(cleaned_data, aes(x = Property_Rights, y = Connected, color = Heavy)) +
   geom_point(aes(color = Heavy), position = position_jitter(height = 0.03, width = 0)) +
   geom_smooth(method = "glm", method.args = list(family="binomial"), se = F) +
   labs(x = "`Property Rights`", y = "Connected", title = "Logistic Regression: Connected vs. Property Rights")
-confint.default(logit_model)
+#confint.default(logit_model)
 
 ```
