@@ -147,25 +147,12 @@ Ridge Regression {data-orientation=columns}
 =====================
 
 ### Description
-Describing the multivariate parameters and what they represent
+We'll use Percent People Connected as the response variable and the Financial Freedom, Government Spending, Government Intergrity as predictors. To perform ridge regression, we use glmnet function to fit the ridge regression with alpha = 0 and find the best lambda. Then we can calculate the R squared pf the model on the training data, the R squared of the model is 43.76%, the best model was able to explain only 43.76% of the variation in the response values of the training data.The goodness of fit of the model is relatively low, these three predictors are not good enough to predict the Percent People Connect of a country.
 
 
 ### Results
 
 ```{r}
-# I am not entirely sure how to do Ridge regression given looking at his slides.
-# I will look over the slides but for now this is literally copied from 
-# https://www.statology.org/ridge-regression-in-r/ 
-library(glmnet)
-y <- cleaned_data$Percent_People_Connected
-x <- data.matrix(cleaned_data[, c('Financial_Freedom', 'Government_Spending')])
-model <- cv.glmnet(x=x, y=y, alpha = 0)
-summary(model)
-plot(model)
-model2 <- glmnet(x=x, y=y, alpha = 0, lambda= model$lambda.min) 
-coef(model2)
-
-
 # Set up the predictors matrix, the chose predictors variables are Financial Freedom, Government Spending and Government Intergrity
 predictors <- c("Financial Freedom", "Government Spending", "Government Integrity")
 X <- as.matrix(cleaned_data[, predictors]) 
@@ -199,21 +186,56 @@ sse <- sum((prediction - y)^2)
 #find R-Squared
 rsq <- 1 - sse/sst
 rsq
-correlation <- cor(y, prediction)
-rsquared <- correlation^2
-rsquared
 
 ```
 
 LOESS Fit {data-orientation=columns}
 =====================
 ### Description
-Describing the multivariate parameters and what they represent
+We are using the LOESS to fit a curve to the relationship between variables in pair, Financial Freedom and Percent People Connected, Government Spending and Percent People Connected, Tax Burden and Percent People Connected, Property Rights and Percent People Connected. We can see that only Financial Freedom and Property Rights have a clearly positive relationship with Percent People Connected. This is consistent with the expectation that people of a country have more financial freedom and property rights have more possibility to access to the Internet.
 
 
 ### Results
 ```{r}
-plot(cleaned_data$Property_Rights, cleaned_data$Government_Integrity)
+# Fit LOESS curve for financial freedom vs. percent people connected
+loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Financial Freedom`, data = cleaned_data)
+predicted <- predict(loess_fit)
+# Plot data and LOESS fit
+ggplot(cleaned_data, aes(x = `Financial Freedom`, y = PercentPeopleConnected)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "Financial Freedom", y = "Percent People Connected", title = "Financial Freedom vs. Percent People Connected")
+
+
+# Fit LOESS curve for government spending vs. percent people connected
+loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Government Spending`, data = cleaned_data)
+predicted <- predict(loess_fit)
+# Plot data and LOESS fit
+ggplot(cleaned_data, aes(x = `Government Spending`, y = PercentPeopleConnected)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "Government Spending", y = "Percent People Connected", title = "Government Spending vs. Percent People Connected")
+
+
+# Fit LOESS curve for tax burden vs. percent people connected
+loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Tax Burden`, data = cleaned_data)
+predicted <- predict(loess_fit)
+# Plot data and LOESS fit
+ggplot(cleaned_data, aes(x = `Tax Burden`, y = PercentPeopleConnected)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "Tax Burden", y = "Percent People Connected", title = "Tax Burden vs. Percent People Connected")
+
+
+# Fit LOESS curve for tax burden vs. percent people connected
+loess_fit <- loess(PercentPeopleConnected ~ cleaned_data$`Property Rights`, data = cleaned_data)
+predicted <- predict(loess_fit)
+# Plot data and LOESS fit
+ggplot(cleaned_data, aes(x = `Property Rights`, y = PercentPeopleConnected)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(x = "Property Rights", y = "Percent People Connected", title = "Property Rights vs. Percent People Connected")
+
 ```
 
 
