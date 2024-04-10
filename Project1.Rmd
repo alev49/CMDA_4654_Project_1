@@ -147,7 +147,7 @@ Ridge Regression {data-orientation=columns}
 =====================
 
 ### Description
-We'll use Percent People Connected as the response variable and the Financial Freedom, Government Spending, Government Intergrity as predictors. To perform ridge regression, we use glmnet function to fit the ridge regression with alpha = 0 and find the best lambda. Then we can calculate the R squared pf the model on the training data, the R squared of the model is 43.76%, the best model was able to explain only 43.76% of the variation in the response values of the training data.The goodness of fit of the model is relatively low, these three predictors are not good enough to predict the Percent People Connect of a country.
+We'll use Percent People Connected as the response variable and the Financial Freedom, Government Spending, Government Intergrity as predictors. To perform ridge regression, we use glmnet function to fit the ridge regression with alpha = 0 and find the best lambda. Then we can calculate the R squared pf the model on the training data, the R squared of the model is 43.68%, the best model was able to explain only 43.68% of the variation in the response values of the training data.The goodness of fit of the model is relatively low, these three predictors are not good enough to predict the Percent People Connect of a country.
 
 
 ### Results
@@ -268,11 +268,43 @@ Logistic Regression Classification {data-orientation=columns}
 =====================
 
 ### Description
-Describing the multivariate parameters and what they represent
+Since the data did not contain a data type that is required by Logistic regression, we have to create some new variables. We defined the threshold for Percent People Connected and Tax burden by using mean(), then create a two new variables to record the result. The new created variables are Connected and Heavy. Connected = 1 means the percent of people of this country is greater than the mean value, Connected = 0 means the percent of people of this country is smaller than the mean value. Heavy = Heavy(= 1) means the tax burden of this country is greater than the mean value, Heavy = Not Heavy(= 0) means the tax burden of this country is smaller than the mean value. After we set up the new variables, then we can do the Logistic regression. We used Financial Freedom and Property Rights as predictors and we found that the country have heavy tax burden have more percent people connected to the internet in general. And we also can get two prediction formula to predict, logit(̂ π) = -2.03 + 0.059 Financial Freedom − 1.37 Not Heavy, logit(̂ π) = -1.85 + 0.053 Property Rights − 1.88 Not Heavy
 
 
 ### Results
 ```{r}
-head(cleaned_data)
+library(dplyr)
+#since there is no required data type to use Logistic regression, so I need to create some new variables to satisfy it.
+#setup the threshold, if the percent people connected is over the mean value than set it as 1, otherwise set it as 0
+threshold <- mean(cleaned_data$PercentPeopleConnected)
+# calculate the mean of tax burden and set it as the threshold of tax burden
+mean <- mean(cleaned_data$`Tax Burden`)
+
+
+# Create a binary response variable based on the threshold
+cleaned_data <- cleaned_data %>%
+  mutate(Connected = ifelse(PercentPeopleConnected > threshold, 1, 0))
+cleaned_data <- cleaned_data %>%
+  mutate(Heavy = ifelse(`Tax Burden` > mean, "Heavy", "Not heavy"))
+
+# Do the logistic regression, take Financial freedom and new created variable Heavy as predictors, target variable is new created variable Connected
+logit_model <- glm(Connected ~ `Financial Freedom`* Heavy, data = cleaned_data, family = binomial)
+summary(logit_model)
+# plot for logistic regression
+ggplot(cleaned_data, aes(x = `Financial Freedom`, y = Connected, color = Heavy)) +
+  geom_point(aes(color = Heavy), position = position_jitter(height = 0.03, width = 0)) +
+  geom_smooth(method = "glm", method.args = list(family="binomial"), se = F) +
+  labs(x = "`Financial Freedom`", y = "Connected", title = "Logistic Regression: Connected vs. Property Rights")
+confint.default(logit_model)
+
+# Do the logistic regression, take Property Rights and new created variable Heavy as predictors, target variable is new created variable Connected
+logit_model <- glm(Connected ~ `Property Rights`* Heavy, data = cleaned_data, family = binomial)
+summary(logit_model)
+# plot for logistic regression
+ggplot(cleaned_data, aes(x = `Property Rights`, y = Connected, color = Heavy)) +
+  geom_point(aes(color = Heavy), position = position_jitter(height = 0.03, width = 0)) +
+  geom_smooth(method = "glm", method.args = list(family="binomial"), se = F) +
+  labs(x = "`Property Rights`", y = "Connected", title = "Logistic Regression: Connected vs. Property Rights")
+confint.default(logit_model)
 
 ```
